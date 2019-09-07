@@ -2,7 +2,7 @@
 using UnityEngine.XR.WSA.Input; //Windows-specific APIs，可以得到手势输入的详细信息
 
 public class GazeGestureManager : MonoBehaviour {
-    public static GazeGestureManager Instance { get; private set; } //这句话没看懂什么意思，为何在开始定义一个类的句柄
+    public static GazeGestureManager Instance { get; private set; } //这句话没看懂什么意思，为何在开始定义一个类的句柄，而且是静态类。感觉可能以后应该有的其他脚本会调用这个句柄
 
     //展示正在注视的全息影像
     public GameObject FocusedObject { get; private set; } // Auto-implemented properties for trivial get and set
