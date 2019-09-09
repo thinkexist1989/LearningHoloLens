@@ -10,6 +10,7 @@
 **/[Ll]ogs/
 **/[Mm]emoryCaptures/
 **/App/
+**/ProjectSettings/
 
 # Never ignore Asset meta data
 !**/[Aa]ssets/**/*.meta
