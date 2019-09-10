@@ -53,22 +53,27 @@ public class Socket : MonoBehaviour
 
     private async void Listener_ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
     {
-        string request;
-        using (var streamReader = new StreamReader(args.Socket.InputStream.AsStreamForRead()))
+        DataReader reader = new DataReader(args.Socket.InputStream);
+        DataWriter writer = new DataWriter(args.Socket.OutputStream);
+        try
         {
-            request = await streamReader.ReadLineAsync();
-        }
-
-        // Echo the request back as the response.
-        using (Stream outputStream = args.Socket.OutputStream.AsStreamForWrite())
-        {
-            using (var streamWriter = new StreamWriter(outputStream))
+            while(true)
             {
-                await streamWriter.WriteLineAsync(request);
-                await streamWriter.FlushAsync();
+                uint x = await reader.LoadAsync(5);
+
+                String a = reader.ReadString(x);
+                writer.WriteString(a);
+                await writer.StoreAsync();
             }
         }
-        sender.Dispose();
+        catch (Exception exception)
+        {
+            // If this is an unknown status it means that the error if fatal and retry will likely fail.
+            if (SocketError.GetStatus(exception.HResult) == SocketErrorStatus.Unknown)
+            {
+                throw;
+            }
+        }
     }
 #endif
     // Update is called once per frame
