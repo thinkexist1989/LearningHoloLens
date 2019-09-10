@@ -6,11 +6,14 @@ using UnityEngine;
 using Windows.Networking;
 using Windows.Networking.Sockets;
 using Windows.Storage.Streams;
+using System.IO;
 #endif
 
 public class Socket : MonoBehaviour
 {
     public TextMesh tm = null;
+    static String temp = "OK";
+    static bool bDataOK = false;
 #if !UNITY_EDITOR
     StreamSocket socket;
     StreamSocketListener listener;
@@ -22,16 +25,16 @@ public class Socket : MonoBehaviour
     {
 #if !UNITY_EDITOR
         listener = new StreamSocketListener();
-        port = "8888";
+        port = "12345";
         listener.ConnectionReceived += Listener_ConnectionReceived;
-        listener.Control.KeepAlive = false;
+        //listener.Control.KeepAlive = false;
 
         Listener_Start();
 #endif
     }
 
 #if !UNITY_EDITOR
-        private async void Listener_Start()
+    private async void Listener_Start()
     {
         tm.text = "Started";
         Debug.Log("Listener started");
@@ -41,60 +44,41 @@ public class Socket : MonoBehaviour
         }
         catch (Exception e)
         {
+            tm.text = "Error: " + e.Message;
             Debug.Log("Error: " + e.Message);
         }
-        tm.text = "Listening";
+        //tm.text = "Listening~";
         Debug.Log("Listening");
     }
 
     private async void Listener_ConnectionReceived(StreamSocketListener sender, StreamSocketListenerConnectionReceivedEventArgs args)
     {
-        tm.text = "Connected";
-        Debug.Log("Connection received");
-        DataReader reader = new DataReader(args.Socket.InputStream);
-        try
+        string request;
+        using (var streamReader = new StreamReader(args.Socket.InputStream.AsStreamForRead()))
         {
-            while (true)
+            request = await streamReader.ReadLineAsync();
+        }
+
+        // Echo the request back as the response.
+        using (Stream outputStream = args.Socket.OutputStream.AsStreamForWrite())
+        {
+            using (var streamWriter = new StreamWriter(outputStream))
             {
-                // Read first 4 bytes (length of the subsequent string). 
-                uint sizeFieldCount = await reader.LoadAsync(sizeof(uint));
-                if (sizeFieldCount != sizeof(uint))
-                {
-                    // The underlying socket was closed before we were able to read the whole data. 
-                    return;
-                }
-
-                // Read the string. 
-                uint stringLength = reader.ReadUInt32();
-                uint actualStringLength = await reader.LoadAsync(stringLength);
-                if (stringLength != actualStringLength)
-                {
-                    // The underlying socket was closed before we were able to read the whole data.
-                    return;
-                }
-
-                // dump data
-                tm.text = "hello";
-                Debug.Log("Received: " + reader.ReadString(actualStringLength));
+                await streamWriter.WriteLineAsync(request);
+                await streamWriter.FlushAsync();
             }
         }
-        catch (Exception exception)
-        {
-            // If this is an unknown status it means that the error is fatal and retry will likely fail. 
-            if (SocketError.GetStatus(exception.HResult) == SocketErrorStatus.Unknown)
-            {
-                throw;
-            }
-
-            // dump data
-            tm.text = "Byebye";
-            Debug.Log("Read Stream failed: " + exception.Message);
-        }
+        sender.Dispose();
     }
 #endif
     // Update is called once per frame
     void Update()
     {
-        //tm.text = "hel";
+        if(bDataOK == true)
+        {
+            tm.text = temp;
+            bDataOK = false;
+        }
+      //  tm.text = temp;
     }
 }
