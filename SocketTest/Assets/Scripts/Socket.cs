@@ -18,6 +18,7 @@ public class Socket : MonoBehaviour
     StreamSocket socket;
     StreamSocketListener listener;
     String port;
+
 #endif
 
     // Use this for initialization
@@ -59,10 +60,27 @@ public class Socket : MonoBehaviour
         {
             while(true)
             {
-                uint x = await reader.LoadAsync(5);
+                //发送数据格式：先发送4个字节长度，再发送数据 例如: 5 hello
+                uint sizeFieldCount = await reader.LoadAsync(4);
+                if(sizeFieldCount != 4)
+                {
+                    return;//socket提前close()了
+                }
+                //读取后续数据的长度
+                uint stringLength = uint.Parse(reader.ReadString(4));
 
-                String a = reader.ReadString(x);
-                writer.WriteString(a);
+                //从输入流加载后续数据
+                uint actualStringLength = await reader.LoadAsync(stringLength);
+                if(actualStringLength != stringLength)
+                {
+                    return;//socket提前close()了
+                }
+                
+                //data中以字符串形式储存所有数据
+                String data = reader.ReadString(actualStringLength);
+
+                //将data原封不动发送回去，做测试
+                writer.WriteString(data);
                 await writer.StoreAsync();
             }
         }
