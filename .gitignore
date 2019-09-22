@@ -12,6 +12,7 @@
 **/App/
 **/ProjectSettings/
 **/Temp/
+**/Packages/
 
 # Never ignore Asset meta data
 !**/[Aa]ssets/**/*.meta
