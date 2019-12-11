@@ -58,29 +58,69 @@ public class Socket : MonoBehaviour
         DataWriter writer = new DataWriter(args.Socket.OutputStream);
         try
         {
-            while(true)
+            while (true)
             {
-                //发送数据格式：先发送4个字节长度，再发送数据 例如: 5 hello
-                uint sizeFieldCount = await reader.LoadAsync(4);
-                if(sizeFieldCount != 4)
-                {
-                    return;//socket提前close()了
-                }
-                //读取后续数据的长度
-                uint stringLength = uint.Parse(reader.ReadString(4));
+                //发送数据格式： 命令(1) 长度(1) 数据(长度)
+                byte[] ba = { 0 };
+                //读取命令，1字节
+                uint actualLength = await reader.LoadAsync(1);
+                if (actualLength != 1)
+                    return;//socket提前close()了                               
+                uint command = uint.Parse(reader.ReadByte().ToString()); //解析命令
 
-                //从输入流加载后续数据
-                uint actualStringLength = await reader.LoadAsync(stringLength);
-                if(actualStringLength != stringLength)
-                {
-                    return;//socket提前close()了
-                }
-                
-                //data中以字符串形式储存所有数据
-                String data = reader.ReadString(actualStringLength);
+                //读取数据长度, 1字节
+                actualLength = await reader.LoadAsync(1);
+                if (actualLength != 1)
+                    return;
+                uint dataLength = uint.Parse(reader.ReadByte().ToString()); ; //解析数据长度
 
-                //将data原封不动发送回去，做测试
-                writer.WriteString(data);
+                Matrix4x4[] matrixGroup;
+
+                //读取所有数据，matrixlength长度
+                if (dataLength != 0)
+                {
+                    actualLength = await reader.LoadAsync(dataLength);
+                    if (actualLength != dataLength)
+                    {
+                        return;//socket提前close()了
+                    }
+
+                    uint numberOfMatrix = dataLength / 64;
+
+                    if (numberOfMatrix < 1)
+                    {
+                        return; //未收到一个矩阵
+                    }
+
+                    matrixGroup = new Matrix4x4[numberOfMatrix];
+
+                    for (int i = 0; i < numberOfMatrix; i++)
+                    {
+                        for (int j = 0; j < 4; j++)
+                        {
+                            float[] column = new float[4];
+                            for (int k = 0; k < 4; k++)
+                            {
+                                byte[] temp = new byte[4];
+                                reader.ReadBytes(temp);
+                                column[k] = BitConverter.ToSingle(temp, 0);
+                            }
+                            matrixGroup[i].SetColumn(j, new Vector4(column[0], column[1], column[2], column[3]));
+                        }
+                    }
+                }
+
+
+                //返回一个初始化的矩阵做测试
+                Matrix4x4 mat = new Matrix4x4(); //这里为要发送的矩阵
+                for (int i = 0; i < 4; i++)
+                {
+                    for (int j = 0; j < 4; j++)
+                    {
+                        byte[] b = BitConverter.GetBytes(mat[j, i]);
+                        writer.WriteBytes(b);
+                    }
+                }
                 await writer.StoreAsync();
             }
         }
